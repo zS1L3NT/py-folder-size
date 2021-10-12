@@ -7,99 +7,101 @@ import os
 
 
 class Calculator():
-    def __init__(self, origin: str):
-        self.origin = origin
+    def __init__(self, origin_path: str):
+        self.origin_path = origin_path
         self.size_hash = str(random.getrandbits(100))
         self.sizes = {}
 
-        for entity in os.listdir(self.origin):
-            path = f'{self.origin}/{entity}'
-            if os.path.isdir(entity):
-                FolderReader(self, self.origin, entity)
+        for entity_name in os.listdir(self.origin_path):
+            entity_path = f'{self.origin_path}/{entity_name}'
+            if os.path.isdir(entity_name):
+                FolderReader(self, self.origin_path, entity_name)
 
-            if os.path.isfile(path):
-                self.set_file_size(path, os.path.getsize(entity))
+            if os.path.isfile(entity_path):
+                self.set_file_size(entity_path, os.path.getsize(entity_path))
 
-    def set_file_size(self, path: str, size: int) -> None:
-        dir = path.split('/')
-        filename = dir.pop()
+    def set_file_size(self, file_path: str, size: int) -> None:
+        file_dir = file_path.split('/')
+        file_name = file_dir.pop()
         ref = self.sizes
 
-        for folder in dir:
-            if folder not in ref:
-                ref[folder] = {}
-            ref = ref[folder]
+        for folder_name in file_dir:
+            if folder_name not in ref:
+                ref[folder_name] = {}
+            ref = ref[folder_name]
         if self.size_hash not in ref:
             ref[self.size_hash] = 0
 
         # Set the filesizes in the ref
-        ref[filename] = size
+        ref[file_name] = size
         ref[self.size_hash] += size
         
-        if "/".join(path.split("/")[:-1]) == self.origin:
+        if "/".join(file_path.split("/")[:-1]) == self.origin_path:
             return
             
         # Set the folder size
         # Do this every time we set a file size in the folder
         ref = self.sizes
-        for folder in self.origin.split("/"):
-            if folder not in ref:
-                ref[folder] = {}
-            ref = ref[folder]
+        for folder_name in self.origin_path.split("/"):
+            if folder_name not in ref:
+                ref[folder_name] = {}
+            ref = ref[folder_name]
+        if self.size_hash not in ref:
+            ref[self.size_hash] = 0
         ref[self.size_hash] += size
 
-    def set_folder_size(self, path: str, size: int):
-        dir = path.split('/')
+    def set_folder_size(self, folder_path: str, size: int):
+        folder_dir = folder_path.split('/')
         ref = self.sizes
 
-        for folder in dir:
-            if folder not in ref:
-                ref[folder] = {}
-            ref = ref[folder]
+        for folder_name in folder_dir:
+            if folder_name not in ref:
+                ref[folder_name] = {}
+            ref = ref[folder_name]
         
         ref[self.size_hash] = size
 
-    def get_file_size(self, dir: list[str]) -> int | None:
-        filename = dir.pop()
+    def get_file_size(self, file_dir: list[str]) -> int | None:
+        file_name = file_dir.pop()
         ref = self.sizes
 
-        for folder in dir:
-            if folder not in ref:
-                ref[folder] = {}
-            ref = ref[folder]
+        for folder_name in file_dir:
+            if folder_name not in ref:
+                ref[folder_name] = {}
+            ref = ref[folder_name]
         
-        if filename not in ref:
+        if file_name not in ref:
             return None
-        return ref[filename]
+        return ref[file_name]
 
 class FolderReader():
-    def __init__(self, parent: Calculator, origin: str, folder: str):
+    def __init__(self, parent: Calculator, origin_path: str, folder_name: str):
         self.parent = parent
-        self.origin = origin
-        self.folder = folder
+        self.origin_path = origin_path
+        self.folder_name = folder_name
 
-        thread = Thread(target=self.read_folder, args=(f'{origin}/{folder}',))
+        thread = Thread(target=self.read_folder, args=(f'{origin_path}/{folder_name}',))
         thread.start()
         thread.join()
 
-    def read_folder(self, path: str) -> int:
+    def read_folder(self, folder_path: str) -> int:
         folder_size = 0
 
-        if self.parent.origin == self.origin:
-            for entity in os.listdir(path):
-                entity = f'{path}/{entity}'
+        if self.parent.origin_path == self.origin_path:
+            for entity_name in os.listdir(folder_path):
+                entity_path = f'{folder_path}/{entity_name}'
                 entity_size = 0
 
-                if os.path.isdir(entity):
-                    entity_size = self.read_folder(entity)
+                if os.path.isdir(entity_path):
+                    entity_size = self.read_folder(entity_path)
 
-                if os.path.isfile(entity):
-                    entity_size = os.path.getsize(entity)
-                    self.parent.set_file_size(entity, entity_size)
+                if os.path.isfile(entity_path):
+                    entity_size = os.path.getsize(entity_path)
+                    self.parent.set_file_size(entity_path, entity_size)
                 
                 folder_size += entity_size
         
-        self.parent.set_folder_size(path, folder_size)
+        self.parent.set_folder_size(folder_path, folder_size)
         return folder_size
 
         
