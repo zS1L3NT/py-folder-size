@@ -18,33 +18,41 @@ class Selector():
     def start(self):
         curr_folder_path = self.curr_folder_path
 
+        self.refresh()
         while True:
             sleep(1)
-
-            if not self.database.is_complete(self.curr_folder_path):
-                self.refresh()
-            
-            if curr_folder_path != self.curr_folder_path:
-                curr_folder_path = self.curr_folder_path
-                self.refresh()
+            self.refresh()
         
     def refresh(self):
         os.system("cls")
-        table = [['( )', 'Name', 'Type', 'Size']]
+        table = [['( )', 'Name', 'Type', 'Status', 'Size']]
         table.append([
             f'({"*" if self.selection == 0 else " "})',
             '^^ Parent Directory',
             'Folder',
+            '-',
             '-'
         ])
         for i, entity_name in enumerate(self.entity_names):
             entity_path = f'{self.curr_folder_path}/{entity_name}'
-            table.append([
-                f'({"*" if self.selection == (i + 1) else " "})',
-                entity_name,
-                'File' if os.path.isfile(entity_path) else 'Folder',
-                self.database.get_entity_size(entity_path)
-            ])
+
+            Checkbox = f'({"*" if self.selection == (i + 1) else " "})'
+
+            Type = 'File' if os.path.isfile(entity_path) else 'Folder'
+
+            Status = ""
+            if os.path.isfile(entity_path):
+                entity_dir = entity_path.split("/")
+                entity_name = entity_dir.pop()
+                ref = self.database.get_ref(entity_dir)
+                Status = "read" if entity_name in ref else "reading..."
+            if os.path.isdir(entity_path):
+                entity_dir = entity_path.split("/")
+                Status = "read" if self.database.get_dir_metadata(entity_dir)["completed"] else "reading..."
+
+            Size = self.database.get_entity_size(entity_path)
+
+            table.append([ Checkbox, entity_name, Type, Status, Size ])
         print(tabulate(table, headers='firstrow', tablefmt='grid'))
     
     def change_folder(self, curr_folder_path: str):

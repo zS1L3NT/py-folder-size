@@ -12,8 +12,11 @@ class Calculator():
         self.origin_path = origin_path
         self.database = database
         self.folders_done = []
+        self.callback = None
+
         self.cancelled = False
-        self.callback = lambda : None
+        self.callback_ran = False
+        self.calculate_done = False
 
         threads: list[FolderThread] = []
 
@@ -30,14 +33,18 @@ class Calculator():
         for thread in threads: thread.start()
 
     def threads_done(self):
+        self.calculate_done = True
         self.database.update_completed(self.origin_path.split("/"))
 
         if self.callback is not None:
+            self.callback_ran = True
             self.callback()
-    
-    def cancel(self, callback: Callable):
+
+    def set_callback(self, callback):
         self.callback = callback
-        self.cancelled = True
+        if self.calculate_done and not self.callback_ran and self.callback is not None:
+            self.callback_ran = True
+            self.callback()
 
     def set_file_size(self, file_path: str, size: int) -> None:
         file_dir = file_path.split('/')

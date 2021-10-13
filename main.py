@@ -4,13 +4,14 @@ from database import Database
 from selector import Selector
 import os
 
-curr_folder_path = os.getcwd().replace("\\", "/")
+curr_folder_path = "/".join(os.getcwd().split("\\")[:-1])
 database = Database()
 selector = Selector(curr_folder_path, database)
 calculator = Calculator(curr_folder_path, database)
 
 def callback():
     global calculator
+    del calculator
     calculator = Calculator(curr_folder_path, database)
 
 def on_press(key):
@@ -37,7 +38,8 @@ def on_press(key):
             curr_folder_path = "/".join(curr_folder_dir)
 
             selector.change_folder(curr_folder_path)
-            calculator.cancel(callback)
+            calculator.set_callback(callback)
+            calculator.cancelled = True
             return
 
         entity_path = f'{curr_folder_path}/{entity_name}'
@@ -45,7 +47,8 @@ def on_press(key):
         
         curr_folder_path = entity_path
         selector.change_folder(curr_folder_path)
-        calculator.cancel(callback)
+        calculator.set_callback(callback)
+        calculator.cancelled = True
 
 try:
     listener = keyboard.Listener(on_press=on_press)
