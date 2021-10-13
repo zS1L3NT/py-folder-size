@@ -16,9 +16,17 @@ class Selector():
         thread.start()
     
     def start(self):
+        curr_folder_path = self.curr_folder_path
+
         while True:
             sleep(1)
-            self.refresh()
+
+            if not self.database.is_complete(self.curr_folder_path):
+                self.refresh()
+            
+            if curr_folder_path != self.curr_folder_path:
+                curr_folder_path = self.curr_folder_path
+                self.refresh()
         
     def refresh(self):
         os.system("cls")

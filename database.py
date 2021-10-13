@@ -2,9 +2,6 @@ from __future__ import annotations
 import random
 
 def format(size: int) -> str:
-    if size < 0:
-        return "?"
-
     if size < 100:
         return str(size) + " B"
 
@@ -45,104 +42,64 @@ def format(size: int) -> str:
 
 class Database():
     def __init__(self):
-        self.hash = str(random.getrandbits(100))
+        self.hash = "00000" + str(random.getrandbits(100))
         self.data = {}
     
+    def get_ref(self, dir: list[str]):
+        ref = self.data
+
+        for entity in dir:
+            if entity not in ref:
+                ref[entity] = {}
+            ref = ref[entity]
+        return ref
+    
+    def get_metadata(self, ref) -> dict:
+        if self.hash not in ref:
+            ref[self.hash] = {
+                "completed": False,
+                "paused": None,
+                "size": 0
+            }
+        return ref[self.hash]
+
+    def get_dir_metadata(self, dir: list[str]) -> dict:
+        return self.get_metadata(self.get_ref(dir))
+
     def set_ref(self, file_dir: list[str], size: int):
         file_name = file_dir.pop()
-        ref = self.data
-        
-        for folder_name in file_dir:
-            if folder_name not in ref:
-                ref[folder_name] = {}
-            ref = ref[folder_name]
-        ref[file_name] = size
+        self.get_ref(file_dir)[file_name] = size
 
     def add_size(self, folder_dir: list[str], size: int):
-        ref = self.data
-        
-        for folder_name in folder_dir:
-            if folder_name not in ref:
-                ref[folder_name] = {}
-            ref = ref[folder_name]
-
-        if self.hash in ref:
-            ref[self.hash]["size"] += size
-        else:
-            ref[self.hash] = {
-                "completed": False,
-                "paused": None,
-                "size": size
-            }
+        metadata = self.get_dir_metadata(folder_dir)
+        metadata["size"] += size
     
     def pause(self, parent_folder_dir: list[str], folder_path: str):
-        ref = self.data
-
-        for parent_folder_name in parent_folder_dir:
-            if parent_folder_name not in ref:
-                ref[parent_folder_name] = {}
-            ref = ref[parent_folder_name]
+        metadata = self.get_dir_metadata(parent_folder_dir)
         
-        if self.hash in ref:
-            if ref[self.hash]["paused"] is None:
-                ref[self.hash]["completed"] = False
-                ref[self.hash]["paused"] = folder_path
-        else:
-            ref[self.hash] = {
-                "completed": False,
-                "paused": folder_path,
-                "size": 0
-            }
+        if metadata["paused"] is None:
+            metadata["completed"] = False
+            metadata["paused"] = folder_path
 
     def set_completed(self, folder_dir: list[str]):
-        ref = self.data
-        
-        for folder_name in folder_dir:
-            if folder_name not in ref:
-                ref[folder_name] = {}
-            ref = ref[folder_name]
-        
-        if self.hash in ref:
-            ref[self.hash]["completed"] = True
-            ref[self.hash]["paused"] = None
-        else:
-            ref[self.hash] = {
-                "completed": True,
-                "paused": None,
-                "size": 0
-            }
+        metadata = self.get_dir_metadata(folder_dir)
+        metadata["completed"] = True
+        metadata["paused"] = None
 
     def update_completed(self, folder_dir: list[str]):
-        ref = self.data
+        ref = self.get_ref(folder_dir)
+        metadata = self.get_metadata(ref)
 
-        for folder_name in folder_dir:
-            if folder_name not in ref:
-                ref[folder_name] = {}
-            ref = ref[folder_name]
-
-        ref[self.hash]["completed"] = True
-        for key, value in ref.items():
-            if type(ref[key]) is dict:
-                if self.hash in ref[key]:
-                    if ref[key][self.hash]["completed"] == False:
-                        ref[self.hash]["completed"] = False
-                        return
-                else:
-                    ref[key][self.hash] = {
-                        "completed": False,
-                        "pause": None,
-                        "size": 0
-                    }
-                    ref[self.hash]["completed"] = False
+        metadata["completed"] = True
+        for value in ref.values():
+            if type(value) is dict:
+                metadata_ = self.get_metadata(value)
+                if metadata_["completed"] == False:
+                    metadata["completed"] = False
                     return
 
     def read_clearance(self, folder_dir: list[str]) -> tuple[True, None] | tuple[False, str]:
-        ref = self.data
-
-        for folder_name in folder_dir:
-            if folder_name not in ref:
-                ref[folder_name] = {}
-            ref = ref[folder_name]
+        ref = self.get_ref(folder_dir)
     
         if self.hash in ref:
             if ref[self.hash]["completed"]:
@@ -152,25 +109,27 @@ class Database():
             return (True, None)
     
     def get_entity_size(self, entity_path: str) -> str:
-        entity_dir = entity_path.split("/")
-        ref = self.data
-
-        for entity_name in entity_dir:
-            if entity_name not in ref:
-                return format(-1)
-            ref = ref[entity_name]
+        ref = self.get_ref(entity_path.split("/"))
 
         if type(ref) is int:
             return format(ref)
         
         if type(ref) is dict:
-            if self.hash not in ref:
-                ref[self.hash] = {
-                    "completed": False,
-                    "pause": None,
-                    "size": 0
-                }
-            return format(ref[self.hash]["size"])
+            metadata = self.get_metadata(ref)
+            return format(metadata["size"])
         
-        return "?"
-        
+        print(entity_path)
+        raise TypeError("What is that file type???")
+
+    def is_complete(self, folder_path: str) -> bool:
+        folder_dir = folder_path.split("/")
+        ref = self.data
+
+        for folder_name in folder_dir:
+            if folder_name not in ref:
+                return False
+            ref = ref[folder_name]
+
+        if self.hash not in ref:
+            return False
+        return ref[self.hash]["completed"]
