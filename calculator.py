@@ -1,10 +1,8 @@
 from __future__ import annotations
 from threading import Thread
-from pprint import pprint
-from time import sleep
 import random
-import json
 import os
+from typing import Callable
 
 # path: "C:/Codes/py-folder-size/calculator.py"
 # dir : ["C:", "Codes", "py-folder-size", "calculator.py"]
@@ -37,7 +35,7 @@ class Database():
             ref[self.hash]["size"] += size
         else:
             ref[self.hash] = {
-                "complete": False,
+                "completed": False,
                 "paused": None,
                 "size": size
             }
@@ -52,15 +50,34 @@ class Database():
         
         if self.hash in ref:
             if ref[self.hash]["paused"] is None:
+                ref[self.hash]["completed"] = False
                 ref[self.hash]["paused"] = folder_path
         else:
             ref[self.hash] = {
-                "complete": False,
+                "completed": False,
                 "paused": folder_path,
                 "size": 0
             }
 
-    def update_status(self, folder_dir: list[str]):
+    def set_completed(self, folder_dir: list[str]):
+        ref = self.data
+        
+        for folder_name in folder_dir:
+            if folder_name not in ref:
+                ref[folder_name] = {}
+            ref = ref[folder_name]
+        
+        if self.hash in ref:
+            ref[self.hash]["completed"] = True
+            ref[self.hash]["paused"] = None
+        else:
+            ref[self.hash] = {
+                "completed": True,
+                "paused": None,
+                "size": 0
+            }
+
+    def update_completed(self, folder_dir: list[str]):
         ref = self.data
 
         for folder_name in folder_dir:
@@ -68,12 +85,36 @@ class Database():
                 ref[folder_name] = {}
             ref = ref[folder_name]
 
-        ref[self.hash]["complete"] = True
+        ref[self.hash]["completed"] = True
         for key, value in ref.items():
             if type(ref[key]) is dict:
-                if ref[key][self.hash]["complete"] == False:
-                    ref[self.hash]["complete"] = False
+                if self.hash in ref[key]:
+                    if ref[key][self.hash]["completed"] == False:
+                        ref[self.hash]["completed"] = False
+                        return
+                else:
+                    ref[key][self.hash] = {
+                        "completed": False,
+                        "pause": None,
+                        "size": 0
+                    }
+                    ref[self.hash]["completed"] = False
                     return
+
+    def read_clearance(self, folder_dir: list[str]) -> tuple[True, None] | tuple[False, str]:
+        ref = self.data
+
+        for folder_name in folder_dir:
+            if folder_name not in ref:
+                ref[folder_name] = {}
+            ref = ref[folder_name]
+    
+        if self.hash in ref:
+            if ref[self.hash]["completed"]:
+                return (True, None)
+            return (False, ref[self.hash]["paused"])
+        else:
+            return (True, None)
 
 class Calculator():
     def __init__(self, origin_path: str, database: Database):
@@ -81,23 +122,32 @@ class Calculator():
         self.database = database
         self.folders_done = []
         self.cancelled = False
-        self.callback = None
+        self.callback = lambda : None
+
+        threads: list[FolderThread] = []
 
         for entity_name in os.listdir(self.origin_path):
             entity_path = f'{self.origin_path}/{entity_name}'
             if os.path.isdir(entity_path):
                 i = len(self.folders_done)
                 self.folders_done.append(False)
-                FolderThread(self, entity_path, i)
+                threads.append(FolderThread(self, entity_path, i))
 
             if os.path.isfile(entity_path):
                 self.set_file_size(entity_path, os.path.getsize(entity_path))
 
+        for thread in threads: thread.start()
+
     def threads_done(self):
-        self.database.update_status(self.origin_path.split("/"))
+        self.database.update_completed(self.origin_path.split("/"))
+        print("Threads finished...")
 
         if self.callback is not None:
             self.callback()
+    
+    def cancel(self, callback: Callable):
+        self.callback = callback
+        self.cancelled = True
 
     def set_file_size(self, file_path: str, size: int) -> None:
         file_dir = file_path.split('/')
@@ -112,9 +162,11 @@ class Calculator():
         origin_dir = self.origin_path.split("/")
         self.database.add_size(origin_dir, size)
 
-    def set_folder_size(self, folder_path: str, size: int):
+    def set_folder_size(self, folder_path: str, size: int, completed: bool):
         folder_dir = folder_path.split('/')
         self.database.add_size(folder_dir, size)
+        if completed:
+            self.database.set_completed(folder_dir)
 
     def set_pause_position(self, folder_path: str):
         folder_dir = folder_path.split('/')
@@ -129,20 +181,28 @@ class FolderThread():
         self.i = i
         self.callback_ran = False
 
-        thread = Thread(target=self.read_folder, args=(folder_path,))
+    def start(self):
+        thread = Thread(target=self.read_folder, args=(self.folder_path,))
         thread.start()
 
     def read_folder(self, folder_path: str) -> int:
         folder_size = 0
+
+        (allowed, paused_path) = self.parent.database.read_clearance(folder_path.split("/"))
         
         for entity_name in os.listdir(folder_path):
             entity_path = f'{folder_path}/{entity_name}'
             entity_size = 0
 
+            if not allowed:
+                if entity_path == paused_path:
+                    allowed = True
+                else:
+                    continue
+
             if self.parent.cancelled:
                 self.parent.set_pause_position(entity_path)
-                self.callback()
-                return 0
+                continue
 
             if os.path.isdir(entity_path):
                 entity_size = self.read_folder(entity_path)
@@ -153,28 +213,16 @@ class FolderThread():
             
             folder_size += entity_size
         
-        self.parent.set_folder_size(folder_path, folder_size)
+        self.parent.set_folder_size(folder_path, folder_size, not self.parent.cancelled)
         if self.folder_path != folder_path:
             return folder_size
         
         self.callback()
         
     def callback(self):
-        if self.callback_ran:
-            return
+        if self.callback_ran: return
+        self.callback_ran = True
 
         self.parent.folders_done[self.i] = True
         if all(self.parent.folders_done):
             self.parent.threads_done()
-
-
-database = Database()
-calculator = Calculator(os.getcwd().replace("\\", "/").replace("/py-folder-size", ""), database)
-
-def callback():
-    with open("data.json", "w") as outfile:
-        json.dump(calculator.database.data, outfile)
-calculator.callback = callback
-
-sleep(1)
-calculator.cancelled = True

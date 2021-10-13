@@ -1,10 +1,10 @@
 from pynput import keyboard
-from Calculator import Calculator
+from calculator import Calculator
 from selector import selector
 import os
 
 selector = selector(os.listdir())
-Calculator = Calculator(os.getcwd().replace("\\", "/").replace("/py-folder-size", ""))
+# calculator = Calculator(os.getcwd().replace("\\", "/").replace("/py-folder-size", ""))
 
 def on_press(key):
     if key == keyboard.Key.esc:
