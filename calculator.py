@@ -3,114 +3,178 @@ from threading import Thread
 from pprint import pprint
 from time import sleep
 import random
+import json
 import os
 
+# path: "C:/Codes/py-folder-size/calculator.py"
+# dir : ["C:", "Codes", "py-folder-size", "calculator.py"]
+# name: "calculator.py"
 
-class Calculator():
-    def __init__(self, origin_path: str):
-        self.origin_path = origin_path
-        self.size_hash = str(random.getrandbits(100))
-        self.sizes = {}
-
-        for entity_name in os.listdir(self.origin_path):
-            entity_path = f'{self.origin_path}/{entity_name}'
-            if os.path.isdir(entity_name):
-                FolderReader(self, self.origin_path, entity_name)
-
-            if os.path.isfile(entity_path):
-                self.set_file_size(entity_path, os.path.getsize(entity_path))
-
-    def set_file_size(self, file_path: str, size: int) -> None:
-        file_dir = file_path.split('/')
+class Database():
+    def __init__(self):
+        self.hash = str(random.getrandbits(100))
+        self.data = {}
+    
+    def set_ref(self, file_dir: list[str], size: int):
         file_name = file_dir.pop()
-        ref = self.sizes
-
+        ref = self.data
+        
         for folder_name in file_dir:
             if folder_name not in ref:
                 ref[folder_name] = {}
             ref = ref[folder_name]
-        if self.size_hash not in ref:
-            ref[self.size_hash] = 0
-
-        # Set the filesizes in the ref
         ref[file_name] = size
-        ref[self.size_hash] += size
+
+    def add_size(self, folder_dir: list[str], size: int):
+        ref = self.data
         
-        if "/".join(file_path.split("/")[:-1]) == self.origin_path:
-            return
-            
-        # Set the folder size
-        # Do this every time we set a file size in the folder
-        ref = self.sizes
-        for folder_name in self.origin_path.split("/"):
+        for folder_name in folder_dir:
             if folder_name not in ref:
                 ref[folder_name] = {}
             ref = ref[folder_name]
-        if self.size_hash not in ref:
-            ref[self.size_hash] = 0
-        ref[self.size_hash] += size
 
-    def set_folder_size(self, folder_path: str, size: int):
-        folder_dir = folder_path.split('/')
-        ref = self.sizes
+        if self.hash in ref:
+            ref[self.hash]["size"] += size
+        else:
+            ref[self.hash] = {
+                "complete": False,
+                "paused": None,
+                "size": size
+            }
+    
+    def pause(self, parent_folder_dir: list[str], folder_path: str):
+        ref = self.data
+
+        for parent_folder_name in parent_folder_dir:
+            if parent_folder_name not in ref:
+                ref[parent_folder_name] = {}
+            ref = ref[parent_folder_name]
+        
+        if self.hash in ref:
+            if ref[self.hash]["paused"] is None:
+                ref[self.hash]["paused"] = folder_path
+        else:
+            ref[self.hash] = {
+                "complete": False,
+                "paused": folder_path,
+                "size": 0
+            }
+
+    def update_status(self, folder_dir: list[str]):
+        ref = self.data
 
         for folder_name in folder_dir:
             if folder_name not in ref:
                 ref[folder_name] = {}
             ref = ref[folder_name]
-        
-        ref[self.size_hash] = size
 
-    def get_file_size(self, file_dir: list[str]) -> int | None:
-        file_name = file_dir.pop()
-        ref = self.sizes
+        ref[self.hash]["complete"] = True
+        for key, value in ref.items():
+            if type(ref[key]) is dict:
+                if ref[key][self.hash]["complete"] == False:
+                    ref[self.hash]["complete"] = False
+                    return
 
-        for folder_name in file_dir:
-            if folder_name not in ref:
-                ref[folder_name] = {}
-            ref = ref[folder_name]
-        
-        if file_name not in ref:
-            return None
-        return ref[file_name]
-
-class FolderReader():
-    def __init__(self, parent: Calculator, origin_path: str, folder_name: str):
-        self.parent = parent
+class Calculator():
+    def __init__(self, origin_path: str, database: Database):
         self.origin_path = origin_path
-        self.folder_name = folder_name
+        self.database = database
+        self.folders_done = []
+        self.cancelled = False
+        self.callback = None
 
-        thread = Thread(target=self.read_folder, args=(f'{origin_path}/{folder_name}',))
+        for entity_name in os.listdir(self.origin_path):
+            entity_path = f'{self.origin_path}/{entity_name}'
+            if os.path.isdir(entity_path):
+                i = len(self.folders_done)
+                self.folders_done.append(False)
+                FolderThread(self, entity_path, i)
+
+            if os.path.isfile(entity_path):
+                self.set_file_size(entity_path, os.path.getsize(entity_path))
+
+    def threads_done(self):
+        self.database.update_status(self.origin_path.split("/"))
+
+        if self.callback is not None:
+            self.callback()
+
+    def set_file_size(self, file_path: str, size: int) -> None:
+        file_dir = file_path.split('/')
+
+        self.database.set_ref(file_dir, size)
+        file_dir.pop()
+        self.database.add_size(file_dir, size)
+        
+        if "/".join(file_path.split("/")[:-1]) == self.origin_path:
+            return
+    
+        origin_dir = self.origin_path.split("/")
+        self.database.add_size(origin_dir, size)
+
+    def set_folder_size(self, folder_path: str, size: int):
+        folder_dir = folder_path.split('/')
+        self.database.add_size(folder_dir, size)
+
+    def set_pause_position(self, folder_path: str):
+        folder_dir = folder_path.split('/')
+        folder_dir.pop()
+
+        self.database.pause(folder_dir, folder_path)
+
+class FolderThread():
+    def __init__(self, parent: Calculator, folder_path: str, i: int):
+        self.parent = parent
+        self.folder_path = folder_path
+        self.i = i
+        self.callback_ran = False
+
+        thread = Thread(target=self.read_folder, args=(folder_path,))
         thread.start()
-        thread.join()
 
     def read_folder(self, folder_path: str) -> int:
         folder_size = 0
+        
+        for entity_name in os.listdir(folder_path):
+            entity_path = f'{folder_path}/{entity_name}'
+            entity_size = 0
 
-        if self.parent.origin_path == self.origin_path:
-            for entity_name in os.listdir(folder_path):
-                entity_path = f'{folder_path}/{entity_name}'
-                entity_size = 0
+            if self.parent.cancelled:
+                self.parent.set_pause_position(entity_path)
+                self.callback()
+                return 0
 
-                if os.path.isdir(entity_path):
-                    entity_size = self.read_folder(entity_path)
+            if os.path.isdir(entity_path):
+                entity_size = self.read_folder(entity_path)
 
-                if os.path.isfile(entity_path):
-                    entity_size = os.path.getsize(entity_path)
-                    self.parent.set_file_size(entity_path, entity_size)
-                
-                folder_size += entity_size
+            if os.path.isfile(entity_path):
+                entity_size = os.path.getsize(entity_path)
+                self.parent.set_file_size(entity_path, entity_size)
+            
+            folder_size += entity_size
         
         self.parent.set_folder_size(folder_path, folder_size)
-        return folder_size
-
+        if self.folder_path != folder_path:
+            return folder_size
         
-Calculator = Calculator(os.getcwd().replace("\\", "/"))
+        self.callback()
+        
+    def callback(self):
+        if self.callback_ran:
+            return
 
-def run():
-    pprint(Calculator.sizes, indent=4, sort_dicts=True)
+        self.parent.folders_done[self.i] = True
+        if all(self.parent.folders_done):
+            self.parent.threads_done()
 
 
-thread = Thread(target=run)
-thread.start()
-thread.join()
+database = Database()
+calculator = Calculator(os.getcwd().replace("\\", "/").replace("/py-folder-size", ""), database)
+
+def callback():
+    with open("data.json", "w") as outfile:
+        json.dump(calculator.database.data, outfile)
+calculator.callback = callback
+
+sleep(1)
+calculator.cancelled = True
