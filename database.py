@@ -91,8 +91,8 @@ class Database():
         metadata = self.get_metadata(ref)
 
         metadata["completed"] = True
-        for value in ref.values():
-            if type(value) is dict:
+        for key, value in ref.items():
+            if type(value) is dict and key != self.hash:
                 metadata_ = self.get_metadata(value)
                 if metadata_["completed"] == False:
                     metadata["completed"] = False
