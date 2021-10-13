@@ -1,10 +1,17 @@
 from pynput import keyboard
 from calculator import Calculator
-from selector import selector
+from database import Database
+from selector import Selector
 import os
 
-selector = selector(os.listdir())
-# calculator = Calculator(os.getcwd().replace("\\", "/").replace("/py-folder-size", ""))
+curr_folder_path = os.getcwd().replace("\\", "/") + "/"
+database = Database()
+selector = Selector(curr_folder_path, database)
+calculator = Calculator(curr_folder_path, database)
+
+def callback():
+    global calculator
+    calculator = Calculator(curr_folder_path, database)
 
 def on_press(key):
     if key == keyboard.Key.esc:
@@ -20,6 +27,24 @@ def on_press(key):
 
     if k == "down":
         selector.down_select()
+    
+    if k == "enter":
+        global curr_folder_path
+        entity_name = selector.get_selected()
+        if entity_name is None:
+            curr_folder_dir = curr_folder_path.split("/")[:-1]
+            curr_folder_dir.pop()
+            curr_folder_path = "/".join(curr_folder_dir) + "/"
+            selector.change_folder(curr_folder_path)
+            calculator.cancel(callback)
+            return
+
+        entity_path = f'{curr_folder_path}/{entity_name}'
+        if os.path.isfile(entity_path): return
+        
+        curr_folder_path = entity_path
+        selector.change_folder(curr_folder_path)
+        calculator.cancel(callback)
 
 try:
     listener = keyboard.Listener(on_press=on_press)

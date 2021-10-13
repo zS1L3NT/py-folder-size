@@ -1,35 +1,48 @@
-from formatter import format
+from threading import Thread
 from tabulate import tabulate
+from database import Database
+from time import sleep
 import os
 
-class selector():
-    def __init__(self, options: list[str]):
-        self.options = options
-        self.sizes = [0 for _ in options]
+
+class Selector():
+    def __init__(self, curr_folder_path: str, database: Database):
+        self.curr_folder_path = curr_folder_path
+        self.entity_names = os.listdir(self.curr_folder_path)
+        self.database = database
         self.selection = 0
 
-        self.refresh()
+        thread = Thread(target=self.start)
+        thread.start()
+    
+    def start(self):
+        while True:
+            sleep(1)
+            self.refresh()
         
     def refresh(self):
         os.system("cls")
-        table = [['( )', 'Filename', 'Size']]
+        table = [['( )', 'Name', 'Type', 'Size']]
         table.append([
             f'({"*" if self.selection == 0 else " "})',
-            'Pause/Resume Calculations',
+            '^^ Parent Directory',
+            'Folder',
             '-'
         ])
-        for i, option in enumerate(self.options):
+        for i, entity_name in enumerate(self.entity_names):
+            entity_path = f'{self.curr_folder_path}/{entity_name}'
             table.append([
                 f'({"*" if self.selection == (i + 1) else " "})',
-                option,
-                format(self.sizes[i])
+                entity_name,
+                'File' if os.path.isfile(entity_path) else 'Folder',
+                self.database.get_entity_size(entity_path)
             ])
         print(tabulate(table, headers='firstrow', tablefmt='grid'))
-
-    def update_sizes(self, sizes: list[int]):
-        self.sizes = sizes
-
-        self.refresh()
+    
+    def change_folder(self, curr_folder_path: str):
+        self.curr_folder_path = curr_folder_path
+        self.entity_names = os.listdir(self.curr_folder_path)
+        self.selection = 0
 
     def up_select(self):
         if self.selection != 0:
@@ -37,6 +50,11 @@ class selector():
             self.refresh()
     
     def down_select(self):
-        if self.selection != len(self.options):
+        if self.selection != len(self.entity_names):
             self.selection += 1
             self.refresh()
+    
+    def get_selected(self):
+        if self.selection == 0:
+            return None
+        return self.entity_names[self.selection - 1]
