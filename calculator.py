@@ -1,4 +1,6 @@
+import json
 from threading import Thread
+from time import sleep
 from database import Database
 from typing import Callable
 import os
@@ -11,12 +13,11 @@ class Calculator():
     def __init__(self, origin_path: str, database: Database):
         self.origin_path = origin_path
         self.database = database
-        self.folders_done = []
-        self.callback = None
+        self.folders_done: list[bool] = []
 
+        self.callback = None
         self.cancelled = False
         self.callback_ran = False
-        self.calculate_done = False
 
         threads: list[FolderThread] = []
 
@@ -28,12 +29,11 @@ class Calculator():
                 threads.append(FolderThread(self, entity_path, i))
 
             if os.path.isfile(entity_path):
-                self.set_file_size(entity_path, os.path.getsize(entity_path))
+                self.add_file_size(entity_path, os.path.getsize(entity_path))
 
         for thread in threads: thread.start()
 
-    def threads_done(self):
-        self.calculate_done = True
+    def on_threads_done(self):
         self.database.update_completed(self.origin_path.split("/"))
 
         if self.callback is not None:
@@ -42,14 +42,14 @@ class Calculator():
 
     def set_callback(self, callback):
         self.callback = callback
-        if self.calculate_done and not self.callback_ran and self.callback is not None:
+        if all(self.folders_done) and not self.callback_ran and self.callback is not None:
             self.callback_ran = True
             self.callback()
 
-    def set_file_size(self, file_path: str, size: int) -> None:
+    def add_file_size(self, file_path: str, size: int) -> None:
         file_dir = file_path.split('/')
 
-        self.database.set_ref(file_dir, size)
+        self.database.set_size(file_dir, size)
         file_dir.pop()
         self.database.add_size(file_dir, size)
         
@@ -59,10 +59,10 @@ class Calculator():
         origin_dir = self.origin_path.split("/")
         self.database.add_size(origin_dir, size)
 
-    def set_folder_size(self, folder_path: str, size: int, completed: bool):
+    def add_folder_size(self, folder_path: str, size: int):
         folder_dir = folder_path.split('/')
         self.database.add_size(folder_dir, size)
-        if completed:
+        if not self.cancelled:
             self.database.set_completed(folder_dir)
 
     def set_pause_position(self, folder_path: str):
@@ -79,17 +79,17 @@ class FolderThread():
         self.callback_ran = False
 
     def start(self):
-        thread = Thread(target=self.read_folder, args=(self.folder_path,))
+        thread = Thread(target=self.read_folder_size, args=(self.folder_path,))
         thread.start()
+        thread.join()
 
-    def read_folder(self, folder_path: str) -> int:
+    def read_folder_size(self, folder_path: str) -> int:
         folder_size = 0
 
         (allowed, paused_path) = self.parent.database.read_clearance(folder_path.split("/"))
         
         for entity_name in os.listdir(folder_path):
             entity_path = f'{folder_path}/{entity_name}'
-            entity_size = 0
 
             if not allowed:
                 if entity_path == paused_path:
@@ -99,22 +99,19 @@ class FolderThread():
 
             if self.parent.cancelled:
                 self.parent.set_pause_position(entity_path)
-                continue
+                break
 
             if os.path.isdir(entity_path):
-                entity_size = self.read_folder(entity_path)
+                size = self.read_folder_size(entity_path)
+                self.parent.add_folder_size(folder_path, size)
 
             if os.path.isfile(entity_path):
-                entity_size = os.path.getsize(entity_path)
-                self.parent.set_file_size(entity_path, entity_size)
-            
-            folder_size += entity_size
-        
-        self.parent.set_folder_size(folder_path, folder_size, not self.parent.cancelled)
-        if self.folder_path != folder_path:
-            return folder_size
+                size = os.path.getsize(entity_path)
+                self.parent.add_file_size(entity_path, size)
         
         self.callback()
+        if self.folder_path != folder_path:
+            return folder_size
         
     def callback(self):
         if self.callback_ran: return
@@ -122,4 +119,25 @@ class FolderThread():
 
         self.parent.folders_done[self.i] = True
         if all(self.parent.folders_done):
-            self.parent.threads_done()
+            self.parent.on_threads_done()
+
+
+database = Database()
+origin_dir = os.getcwd().split("\\")[:-1]
+origin_dir.append("web-react-statify")
+
+def write():
+    with open("__final.json", "w") as f:
+        json.dump(database.get_ref(origin_dir), f)
+
+def done():
+    origin_dir.append("src")
+    with open("__partial.json", "w") as f:
+        json.dump(database.get_ref(origin_dir), f)
+        calc = Calculator("/".join(origin_dir), database)
+        calc.set_callback(write)
+
+calc = Calculator("/".join(origin_dir), database)
+calc.set_callback(done)
+sleep(0.01)
+calc.cancelled = True

@@ -54,7 +54,7 @@ class Database():
             ref = ref[entity]
         return ref
     
-    def get_metadata(self, ref) -> dict:
+    def get_metadata__ref(self, ref) -> dict:
         if self.hash not in ref:
             ref[self.hash] = {
                 "completed": False,
@@ -63,37 +63,38 @@ class Database():
             }
         return ref[self.hash]
 
-    def get_dir_metadata(self, dir: list[str]) -> dict:
-        return self.get_metadata(self.get_ref(dir))
+    def get_metadata__dir(self, dir: list[str]) -> dict:
+        return self.get_metadata__ref(self.get_ref(dir))
 
-    def set_ref(self, file_dir: list[str], size: int):
-        file_name = file_dir.pop()
-        self.get_ref(file_dir)[file_name] = size
+    def set_size(self, file_dir: list[str], size: int):
+        ref = self.get_ref(file_dir[:-1])
+        ref[file_dir[-1]] = size
 
     def add_size(self, folder_dir: list[str], size: int):
-        metadata = self.get_dir_metadata(folder_dir)
+        metadata = self.get_metadata__dir(folder_dir)
         metadata["size"] += size
     
     def pause(self, parent_folder_dir: list[str], folder_path: str):
-        metadata = self.get_dir_metadata(parent_folder_dir)
+        metadata = self.get_metadata__dir(parent_folder_dir)
         
         if metadata["paused"] is None:
             metadata["completed"] = False
             metadata["paused"] = folder_path
 
     def set_completed(self, folder_dir: list[str]):
-        metadata = self.get_dir_metadata(folder_dir)
+        metadata = self.get_metadata__dir(folder_dir)
         metadata["completed"] = True
         metadata["paused"] = None
 
     def update_completed(self, folder_dir: list[str]):
         ref = self.get_ref(folder_dir)
-        metadata = self.get_metadata(ref)
+        metadata = self.get_metadata__ref(ref)
 
         metadata["completed"] = True
+        metadata["paused"] = None
         for key, value in ref.items():
             if type(value) is dict and key != self.hash:
-                metadata_ = self.get_metadata(value)
+                metadata_ = self.get_metadata__ref(value)
                 if metadata_["completed"] == False:
                     metadata["completed"] = False
                     return
@@ -115,7 +116,7 @@ class Database():
             return format(ref)
         
         if type(ref) is dict:
-            metadata = self.get_metadata(ref)
+            metadata = self.get_metadata__ref(ref)
             return format(metadata["size"])
         
         print(entity_path)

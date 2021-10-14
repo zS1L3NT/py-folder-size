@@ -48,7 +48,7 @@ class Selector():
                 Status = "read" if entity_name in ref else "reading..."
             if os.path.isdir(entity_path):
                 entity_dir = entity_path.split("/")
-                Status = "read" if self.database.get_dir_metadata(entity_dir)["completed"] else "reading..."
+                Status = "read" if self.database.get_metadata__dir(entity_dir)["completed"] else "reading..."
 
             Size = self.database.get_entity_size(entity_path)
 
