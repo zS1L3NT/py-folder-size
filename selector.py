@@ -25,7 +25,7 @@ class Selector():
         
     def refresh(self):
         os.system("cls")
-        table = [['( )', 'Name', 'Type', 'Status', 'Size']]
+        table = [['( )', 'Name', 'Type', 'Reading', 'Size']]
         table.append([
             f'({"*" if self.selection == 0 else " "})',
             '^^ Parent Directory',
@@ -45,10 +45,10 @@ class Selector():
                 entity_dir = entity_path.split("/")
                 entity_name = entity_dir.pop()
                 ref = self.database.get_ref(entity_dir)
-                Status = "read" if entity_name in ref else "reading..."
+                Status = "✅\u200B" if entity_name in ref else "⌛\u200B"
             if os.path.isdir(entity_path):
                 entity_dir = entity_path.split("/")
-                Status = "read" if self.database.get_metadata__dir(entity_dir)["completed"] else "reading..."
+                Status = "✅\u200B" if self.database.get_metadata__dir(entity_dir)["completed"] else "⌛\u200B"
 
             Size = self.database.get_entity_size(entity_path)
 
