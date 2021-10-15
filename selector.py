@@ -16,11 +16,26 @@ class Selector():
         thread.start()
     
     def start(self):
+        complete = False
         curr_folder_path = self.curr_folder_path
 
+        sleep(1)
         self.refresh()
+
         while True:
             sleep(1)
+
+            if curr_folder_path != self.curr_folder_path:
+                curr_folder_path = self.curr_folder_path
+                complete = False
+                self.refresh()
+            
+            metadata = self.database.get_metadata__dir(curr_folder_path.split("/"))
+            if metadata["completed"] == True:
+                if complete:
+                    continue
+                complete = True
+            
             self.refresh()
         
     def refresh(self):
