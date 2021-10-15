@@ -66,11 +66,7 @@ class Database():
     def get_metadata__dir(self, dir: list[str]) -> dict:
         return self.get_metadata__ref(self.get_ref(dir))
 
-    def set_size(self, file_dir: list[str], size: int):
-        ref = self.get_ref(file_dir[:-1])
-        ref[file_dir[-1]] = size
-
-    def add_size(self, folder_dir: list[str], size: int):
+    def add_folder_size(self, folder_dir: list[str], size: int):
         metadata = self.get_metadata__dir(folder_dir)
         metadata["size"] += size
     
@@ -104,10 +100,10 @@ class Database():
     
         if self.hash in ref:
             if ref[self.hash]["completed"]:
-                return (True, None)
-            return (False, ref[self.hash]["paused"])
-        else:
-            return (True, None)
+                return (False, None)
+            if ref[self.hash]["paused"] is not None:
+                return (False, ref[self.hash]["paused"])
+        return (True, None)
     
     def get_entity_size(self, entity_path: str) -> str:
         ref = self.get_ref(entity_path.split("/"))
