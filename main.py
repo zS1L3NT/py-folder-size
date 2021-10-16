@@ -1,12 +1,15 @@
-import json
-from datetime import datetime
 from pynput import keyboard
 from calculator import Calculator
 from database import Database
 from selector import Selector
+import sys
 import os
 
-curr_folder_path = "/".join(os.getcwd().split("\\")[:-1])
+try:
+    curr_folder_path = sys.argv[1]
+except:
+    curr_folder_path = os.getcwd().replace("\\", "/")
+
 database = Database()
 selector = Selector(curr_folder_path, database)
 calculator = Calculator(curr_folder_path, database)
@@ -18,6 +21,7 @@ def callback():
 
 def on_press(key):
     global curr_folder_path
+    global selector
     if key == keyboard.Key.esc:
         return False
     
@@ -32,29 +36,32 @@ def on_press(key):
     if k == "down":
         selector.down_select()
     
-    if k == "p":
-        with open(f"{round(datetime.now().timestamp())}.json", "w") as f:
-            json.dump(database.get_ref(curr_folder_path.split("/")), f)
-    
     if k == "enter":
         entity_name = selector.get_selected()
+
         if entity_name is None:
-            curr_folder_dir = curr_folder_path.split("/")
-            curr_folder_dir.pop()
-            curr_folder_path = "/".join(curr_folder_dir)
+            entity_dir = curr_folder_path.split("/")
+            entity_dir.pop()
 
-            selector.change_folder(curr_folder_path)
-            calculator.set_callback(callback)
-            calculator.cancelled = True
-            return
+            argv = []
+            argv.append("python")
+            argv.append(sys.argv[0])
+            argv.append('/'.join(entity_dir))
+            selector.cancelled = True
+            os.system("cls")
+            os.execv(sys.executable, argv)
+        else:
+            entity_path = f'{curr_folder_path}/{entity_name}'
+            if os.path.isfile(entity_path):
+                return
 
-        entity_path = f'{curr_folder_path}/{entity_name}'
-        if os.path.isfile(entity_path): return
-        
-        curr_folder_path = entity_path
-        selector.change_folder(curr_folder_path)
-        calculator.set_callback(callback)
-        calculator.cancelled = True
+            argv = []
+            argv.append("python")
+            argv.append(sys.argv[0])
+            argv.append(entity_path)
+            selector.cancelled = True
+            os.system("cls")
+            os.execv(sys.executable, argv)
 
 try:
     listener = keyboard.Listener(on_press=on_press)

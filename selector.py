@@ -11,6 +11,7 @@ class Selector():
         self.entity_names = os.listdir(self.curr_folder_path)
         self.database = database
         self.selection = 0
+        self.cancelled = False
 
         thread = Thread(target=self.start)
         thread.start()
@@ -24,6 +25,8 @@ class Selector():
 
         while True:
             sleep(1)
+            if self.cancelled:
+                break
 
             if curr_folder_path != self.curr_folder_path:
                 curr_folder_path = self.curr_folder_path

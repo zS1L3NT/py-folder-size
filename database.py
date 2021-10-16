@@ -42,7 +42,7 @@ def format(size: int) -> str:
 
 class Database():
     def __init__(self):
-        self.hash = "00000" + str(random.getrandbits(100))
+        self.hash = "__.metadata__" + str(random.getrandbits(100))
         self.data = {}
     
     def get_ref(self, dir: list[str]):
@@ -58,7 +58,6 @@ class Database():
         if self.hash not in ref:
             ref[self.hash] = {
                 "completed": False,
-                "paused": None,
                 "size": 0
             }
         return ref[self.hash]
@@ -69,41 +68,22 @@ class Database():
     def add_folder_size(self, folder_dir: list[str], size: int):
         metadata = self.get_metadata__dir(folder_dir)
         metadata["size"] += size
-    
-    def pause(self, parent_folder_dir: list[str], folder_path: str):
-        metadata = self.get_metadata__dir(parent_folder_dir)
-        
-        if metadata["paused"] is None:
-            metadata["completed"] = False
-            metadata["paused"] = folder_path
 
     def set_completed(self, folder_dir: list[str]):
         metadata = self.get_metadata__dir(folder_dir)
         metadata["completed"] = True
-        metadata["paused"] = None
 
     def update_completed(self, folder_dir: list[str]):
         ref = self.get_ref(folder_dir)
         metadata = self.get_metadata__ref(ref)
 
         metadata["completed"] = True
-        metadata["paused"] = None
         for key, value in ref.items():
             if type(value) is dict and key != self.hash:
                 metadata_ = self.get_metadata__ref(value)
                 if metadata_["completed"] == False:
                     metadata["completed"] = False
                     return
-
-    def read_clearance(self, folder_dir: list[str]) -> tuple[True, None] | tuple[False, str]:
-        ref = self.get_ref(folder_dir)
-    
-        if self.hash in ref:
-            if ref[self.hash]["completed"]:
-                return (False, None)
-            if ref[self.hash]["paused"] is not None:
-                return (False, ref[self.hash]["paused"])
-        return (True, None)
     
     def get_entity_size(self, entity_path: str) -> str:
         ref = self.get_ref(entity_path.split("/"))
@@ -114,19 +94,7 @@ class Database():
         if type(ref) is dict:
             metadata = self.get_metadata__ref(ref)
             return format(metadata["size"])
-        
-        print(entity_path)
-        raise TypeError("What is that file type???")
-
-    def is_complete(self, folder_path: str) -> bool:
-        folder_dir = folder_path.split("/")
-        ref = self.data
-
-        for folder_name in folder_dir:
-            if folder_name not in ref:
-                return False
-            ref = ref[folder_name]
-
-        if self.hash not in ref:
-            return False
-        return ref[self.hash]["completed"]
+    
+    def wipe(self):
+        self.data = {}
+        return self
