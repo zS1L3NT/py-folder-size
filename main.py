@@ -6,21 +6,21 @@ import sys
 import os
 
 try:
-    curr_folder_path = sys.argv[1]
+    origin_path = sys.argv[1]
 except:
-    curr_folder_path = os.getcwd().replace("\\", "/")
+    origin_path = os.getcwd().replace("\\", "/")
 
 database = Database()
-selector = Selector(curr_folder_path, database)
-calculator = Calculator(curr_folder_path, database)
+selector = Selector(origin_path, database)
+calculator = Calculator(origin_path, database)
 
 def callback():
     global calculator
     del calculator
-    calculator = Calculator(curr_folder_path, database)
+    calculator = Calculator(origin_path, database)
 
 def on_press(key):
-    global curr_folder_path
+    global origin_path
     global selector
     if key == keyboard.Key.esc:
         return False
@@ -40,7 +40,9 @@ def on_press(key):
         entity_name = selector.get_selected()
 
         if entity_name is None:
-            entity_dir = curr_folder_path.split("/")
+            if origin_path.endswith(":"):
+                return
+            entity_dir = origin_path.split("/")
             entity_dir.pop()
             new_path = "/".join(entity_dir)
 
@@ -48,7 +50,7 @@ def on_press(key):
             listener.stop()
             os.execl(sys.executable, "python", __file__, new_path)
         else:
-            new_path = f'{curr_folder_path}/{entity_name}'
+            new_path = f'{origin_path}/{entity_name}'
             if os.path.isfile(new_path):
                 return
 
