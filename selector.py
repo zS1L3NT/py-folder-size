@@ -71,10 +71,10 @@ class Selector():
                 entity_dir = entity_path.split("/")
                 entity_name = entity_dir.pop()
                 ref = self.database.get_ref(entity_dir)
-                Status = "✅\u200B" if entity_name in ref else "⌛\u200B"
+                Status = "✅\u200B\u200B" if entity_name in ref else "⌛\u200B"
             if os.path.isdir(entity_path):
                 entity_dir = entity_path.split("/")
-                Status = "✅\u200B" if self.database.get_metadata__dir(entity_dir)["completed"] else "⌛\u200B"
+                Status = "✅\u200B\u200B" if self.database.get_metadata__dir(entity_dir)["completed"] else "⌛\u200B"
 
             Size = self.database.get_entity_size(entity_path)
 
