@@ -9,12 +9,20 @@ import os
 class Calculator():
     def __init__(self, origin_path: str, database: Database):
         self.origin_path = origin_path
+        if self.origin_path.endswith(":"):
+            self.origin_path += "/"
+
         self.database = database
         self.folders_done: list[bool] = []
 
         threads: list[FolderThread] = []
 
-        for entity_name in sorted(os.listdir(self.origin_path)):
+        try:
+            entity_names = sorted(os.listdir(self.origin_path))
+        except:
+            entity_names = []
+
+        for entity_name in entity_names:
             entity_path = f'{self.origin_path}/{entity_name}'
 
             if os.path.isdir(entity_path):
@@ -61,7 +69,12 @@ class FolderThread():
         thread.start()
 
     def read_folder(self, folder_path: str):
-        for entity_name in sorted(os.listdir(folder_path)):
+        try:
+            entity_names = sorted(os.listdir(folder_path))
+        except:
+            entity_names = []
+
+        for entity_name in entity_names:
             entity_path = f'{folder_path}/{entity_name}'
 
             if os.path.isdir(entity_path):

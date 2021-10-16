@@ -6,9 +6,12 @@ import os
 
 
 class Selector():
-    def __init__(self, curr_folder_path: str, database: Database):
-        self.curr_folder_path = curr_folder_path
-        self.entity_names = os.listdir(self.curr_folder_path)
+    def __init__(self, origin_path: str, database: Database):
+        self.origin_path = origin_path
+        if self.origin_path.endswith(":"):
+            self.origin_path += "/"
+
+        self.entity_names = os.listdir(self.origin_path)
         self.database = database
         self.selection = 0
         self.cancelled = False
@@ -18,7 +21,7 @@ class Selector():
     
     def start(self):
         complete = False
-        curr_folder_path = self.curr_folder_path
+        origin_path = self.origin_path
 
         sleep(1)
         self.refresh()
@@ -28,12 +31,12 @@ class Selector():
             if self.cancelled:
                 break
 
-            if curr_folder_path != self.curr_folder_path:
-                curr_folder_path = self.curr_folder_path
+            if origin_path != self.origin_path:
+                origin_path = self.origin_path
                 complete = False
                 self.refresh()
             
-            metadata = self.database.get_metadata__dir(curr_folder_path.split("/"))
+            metadata = self.database.get_metadata__dir(origin_path.split("/"))
             if metadata["completed"] == True:
                 if complete:
                     continue
@@ -52,7 +55,7 @@ class Selector():
             '-'
         ])
         for i, entity_name in enumerate(self.entity_names):
-            entity_path = f'{self.curr_folder_path}/{entity_name}'
+            entity_path = f'{self.origin_path}/{entity_name}'
 
             Checkbox = f'({"*" if self.selection == (i + 1) else " "})'
 
@@ -74,8 +77,8 @@ class Selector():
         print(tabulate(table, headers='firstrow', tablefmt='grid'))
     
     def change_folder(self, curr_folder_path: str):
-        self.curr_folder_path = curr_folder_path
-        self.entity_names = os.listdir(self.curr_folder_path)
+        self.origin_path = curr_folder_path
+        self.entity_names = os.listdir(self.origin_path)
         self.selection = 0
 
     def up_select(self):
