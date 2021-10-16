@@ -11,7 +11,7 @@ class Selector():
         if self.origin_path.endswith(":"):
             self.origin_path += "/"
 
-        self.entity_names = os.listdir(self.origin_path)
+        self.entity_names = self.get_sorted_entity_names()
         self.database = database
         self.selection = 0
         self.cancelled = False
@@ -76,9 +76,25 @@ class Selector():
             table.append([ Checkbox, entity_name, Type, Status, Size ])
         print(tabulate(table, headers='firstrow', tablefmt='grid'))
     
+    def get_sorted_entity_names(self):
+        entity_names = os.listdir(self.origin_path)
+        folders: list[str] = []
+        files: list[str] = []
+
+        for entity_name in entity_names:
+            entity_path = f'{self.origin_path}/{entity_name}'
+
+            if os.path.isfile(entity_path):
+                files.append(entity_name)
+
+            if os.path.isdir(entity_path):
+                folders.append(entity_name)
+        
+        return folders + files
+    
     def change_folder(self, curr_folder_path: str):
         self.origin_path = curr_folder_path
-        self.entity_names = os.listdir(self.origin_path)
+        self.entity_names = self.get_sorted_entity_names()
         self.selection = 0
 
     def up_select(self):
