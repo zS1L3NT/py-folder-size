@@ -46,7 +46,7 @@ class Selector():
         
     def refresh(self):
         os.system("cls")
-        table = [['( )', 'Name', 'Type', 'Reading', 'Size']]
+        table = [['( )', 'Name', 'Type', 'Size', 'Reading']]
         table.append([
             f'({"*" if self.selection == 0 else " "})',
             '^^ Parent Directory',
@@ -78,7 +78,7 @@ class Selector():
 
             Size = self.database.get_entity_size(entity_path)
 
-            table.append([ Checkbox, entity_name, Type, Status, Size ])
+            table.append([ Checkbox, entity_name, Type, Size, Status ])
 
         print(tabulate(table, headers='firstrow', tablefmt='grid'))
     
