@@ -1,3 +1,5 @@
+import json
+from datetime import datetime
 from pynput import keyboard
 from calculator import Calculator
 from database import Database
@@ -15,6 +17,7 @@ def callback():
     calculator = Calculator(curr_folder_path, database)
 
 def on_press(key):
+    global curr_folder_path
     if key == keyboard.Key.esc:
         return False
     
@@ -29,8 +32,11 @@ def on_press(key):
     if k == "down":
         selector.down_select()
     
+    if k == "p":
+        with open(f"{round(datetime.now().timestamp())}.json", "w") as f:
+            json.dump(database.get_ref(curr_folder_path.split("/")), f)
+    
     if k == "enter":
-        global curr_folder_path
         entity_name = selector.get_selected()
         if entity_name is None:
             curr_folder_dir = curr_folder_path.split("/")

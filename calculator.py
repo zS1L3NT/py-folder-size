@@ -1,4 +1,6 @@
+import json
 from threading import Thread
+from time import sleep
 from database import Database
 import os
 
@@ -18,7 +20,7 @@ class Calculator():
 
         threads: list[FolderThread] = []
 
-        for entity_name in os.listdir(self.origin_path):
+        for entity_name in sorted(os.listdir(self.origin_path)):
             entity_path = f'{self.origin_path}/{entity_name}'
             if os.path.isdir(entity_path):
                 i = len(self.folders_done)
@@ -50,25 +52,22 @@ class Calculator():
 
         if file_name in ref:
             return
-        
         ref[file_name] = size
-        self.database.add_folder_size(file_dir, size)
-        
-        if "/".join(file_path.split("/")[:-1]) == self.origin_path:
-            return
-    
-        origin_dir = self.origin_path.split("/")
-        self.database.add_folder_size(origin_dir, size)
+
+        ref_dir = []
+        for folder_name in file_dir:
+            ref_dir.append(folder_name)
+            self.database.add_folder_size(ref_dir, size)
 
     def add_folder_size(self, folder_path: str, size: int):
         folder_dir = folder_path.split('/')
         self.database.add_folder_size(folder_dir, size)
 
-    def set_pause_position(self, folder_path: str):
-        folder_dir = folder_path.split('/')
+    def set_pause_position(self, entity_path: str):
+        folder_dir = entity_path.split('/')
         folder_dir.pop()
 
-        self.database.pause(folder_dir, folder_path)
+        self.database.pause(folder_dir, entity_path)
 
 class FolderThread():
     def __init__(self, parent: Calculator, folder_path: str, i: int):
@@ -78,19 +77,13 @@ class FolderThread():
         self.callback_ran = False
 
     def start(self):
-        thread = Thread(target=self.read_folder_size, args=(self.folder_path,))
+        thread = Thread(target=self.read_folder, args=(self.folder_path,))
         thread.start()
 
-    def read_folder_size(self, folder_path: str) -> int:
-        folder_size = 0
-
-        if folder_path == "C:/Codes/wss":
-            print()
-            pass
-
+    def read_folder(self, folder_path: str):
         (allowed, paused_path) = self.parent.database.read_clearance(folder_path.split("/"))
         
-        for entity_name in os.listdir(folder_path):
+        for entity_name in sorted(os.listdir(folder_path)):
             entity_path = f'{folder_path}/{entity_name}'
 
             if not allowed:
@@ -106,19 +99,14 @@ class FolderThread():
                 return 0
 
             if os.path.isdir(entity_path):
-                size = self.read_folder_size(entity_path)
-                folder_size += size
-                self.parent.add_folder_size(folder_path, size)
+                self.read_folder(entity_path)
 
             if os.path.isfile(entity_path):
-                size = os.path.getsize(entity_path)
-                folder_size += size
-                self.parent.add_file_size(entity_path, size)
+                self.parent.add_file_size(entity_path, os.path.getsize(entity_path))
         
         self.parent.database.set_completed(folder_path.split("/"))
-        if self.folder_path != folder_path:
-            return folder_size
-        self.callback()
+        if self.folder_path == folder_path:
+            self.callback()
 
     def callback(self):
         if self.callback_ran: return
@@ -127,3 +115,23 @@ class FolderThread():
         self.parent.folders_done[self.i] = True
         if all(self.parent.folders_done):
             self.parent.on_threads_done()
+
+if __name__ == "__main__":
+    database = Database()
+    origin_dir = os.getcwd().split("\\")[:-1]
+
+    def done():
+        with open("__final.json", "w") as f:
+            json.dump(database.get_ref(origin_dir), f)
+    
+    def half():
+        origin_dir.append("folders")
+        with open("__half.json", "w") as f:
+            json.dump(database.get_ref(origin_dir), f)
+            calc = Calculator("/".join(origin_dir), database)
+            calc.set_callback(done)
+    
+    calc = Calculator("/".join(origin_dir), database)
+    calc.callback = half
+    sleep(10)
+    calc.cancelled = True
