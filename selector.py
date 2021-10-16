@@ -27,9 +27,9 @@ class Selector():
         self.refresh()
 
         while True:
-            sleep(1)
             if self.cancelled:
                 break
+            sleep(1)
 
             if origin_path != self.origin_path:
                 origin_path = self.origin_path
@@ -54,7 +54,12 @@ class Selector():
             '-',
             '-'
         ])
-        for i, entity_name in enumerate(self.entity_names):
+
+        for i, entity_name in self.paginate_entity_names():
+            if entity_name == "...":
+                table.append([ "...", "...", "...", "...", "..." ])
+                continue
+
             entity_path = f'{self.origin_path}/{entity_name}'
 
             Checkbox = f'({"*" if self.selection == (i + 1) else " "})'
@@ -74,7 +79,49 @@ class Selector():
             Size = self.database.get_entity_size(entity_path)
 
             table.append([ Checkbox, entity_name, Type, Status, Size ])
+
         print(tabulate(table, headers='firstrow', tablefmt='grid'))
+    
+    def paginate_entity_names(self):
+        empty_entity = "..."
+        selected = self.selection - 1
+        entity_count = len(self.entity_names)
+
+        if entity_count <= 9:
+            return enumerate(self.entity_names)
+
+        entity_names = [(0, "") for _ in range(9)]
+        entity_names[0] = (0, self.entity_names[0])
+        entity_names[8] = (entity_count - 1, self.entity_names[-1])
+        
+        if selected <= 3:
+            entity_names[1] = (1 ,self.entity_names[1])
+            entity_names[2] = (2 ,self.entity_names[2])
+            entity_names[3] = (3 ,self.entity_names[3])
+            entity_names[4] = (4 ,self.entity_names[4])
+            entity_names[5] = (5 ,self.entity_names[5])
+            entity_names[6] = (6 ,self.entity_names[6])
+            entity_names[7] = (-1, empty_entity)
+            return entity_names
+        
+        if entity_count - selected <= 4:
+            entity_names[1] = (-1, empty_entity)
+            entity_names[2] = (entity_count - 7, self.entity_names[-7])
+            entity_names[3] = (entity_count - 6, self.entity_names[-6])
+            entity_names[4] = (entity_count - 5, self.entity_names[-5])
+            entity_names[5] = (entity_count - 4, self.entity_names[-4])
+            entity_names[6] = (entity_count - 3, self.entity_names[-3])
+            entity_names[7] = (entity_count - 2, self.entity_names[-2])
+            return entity_names
+        
+        entity_names[1] = (-1, empty_entity)
+        entity_names[2] = (selected - 2, self.entity_names[selected - 2])
+        entity_names[3] = (selected - 1, self.entity_names[selected - 1])
+        entity_names[4] = (selected, self.entity_names[selected])
+        entity_names[5] = (selected + 1, self.entity_names[selected + 1])
+        entity_names[6] = (selected + 2, self.entity_names[selected + 2])
+        entity_names[7] = (-1, empty_entity)
+        return entity_names
     
     def get_sorted_entity_names(self):
         entity_names = os.listdir(self.origin_path)
