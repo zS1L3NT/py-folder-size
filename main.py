@@ -42,26 +42,19 @@ def on_press(key):
         if entity_name is None:
             entity_dir = curr_folder_path.split("/")
             entity_dir.pop()
+            new_path = "/".join(entity_dir)
 
-            argv = []
-            argv.append("python")
-            argv.append(sys.argv[0])
-            argv.append('/'.join(entity_dir))
             selector.cancelled = True
-            os.system("cls")
-            os.execv(sys.executable, argv)
+            listener.stop()
+            os.execl(sys.executable, "python", __file__, new_path)
         else:
-            entity_path = f'{curr_folder_path}/{entity_name}'
-            if os.path.isfile(entity_path):
+            new_path = f'{curr_folder_path}/{entity_name}'
+            if os.path.isfile(new_path):
                 return
 
-            argv = []
-            argv.append("python")
-            argv.append(sys.argv[0])
-            argv.append(entity_path)
             selector.cancelled = True
-            os.system("cls")
-            os.execv(sys.executable, argv)
+            listener.stop()
+            os.execl(sys.executable, "python", __file__, new_path)
 
 try:
     listener = keyboard.Listener(on_press=on_press)
