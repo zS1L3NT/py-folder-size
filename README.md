@@ -1,6 +1,6 @@
-﻿# py-folder-size
-Script to recursively calculate the total size of a folder. Only tested in Windows OS. Made a simple console GUI with pagination to navigate the current working directory you are in. Use enter key to view contents of a sub-folder.
-![GUI](https://i.ibb.co/5TgvtZT/py-folder-size.png)
+﻿# py-folder-sizes
+Script to recursively calculate the total size of a folder. Only tested in Windows OS. Made a simple console GUI with pagination to navigate the current working directory you are in. Use space key to view contents of a sub-folder.
+![GUI](https://i.ibb.co/3ztbqNQ/sizes.png)
 ## Installation
 Install the two dependencies for this project like this
 ```bash
