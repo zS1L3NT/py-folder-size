@@ -84,46 +84,28 @@ class Selector():
 
         print(tabulate(table, headers='firstrow', tablefmt='grid'))
     
-    def paginate_entity_names(self):
-        empty_entity = "..."
-        selected = self.selection - 1
-        entity_count = len(self.entity_names)
+    def paginate_entity_names(self) -> list[tuple[int, str]]:
+        empty_entity = [(-1, "...")]
+        selected_i = self.selection - 1
+        entity_names = list(enumerate(self.entity_names))
+        entity_count = len(entity_names)
 
-        if entity_count <= 9:
-            return enumerate(self.entity_names)
+        # maximum number of entities that can be shown on the screen
+        # make the number odd
+        max_entity_count = max(5, (os.get_terminal_size().lines - 8) // 2)
+        max_entity_count = (max_entity_count + 1) if max_entity_count // 2 else max_entity_count
+        half_max_entity_count = max_entity_count // 2
 
-        entity_names = [(0, "") for _ in range(9)]
-        entity_names[0] = (0, self.entity_names[0])
-        entity_names[8] = (entity_count - 1, self.entity_names[-1])
-        
-        if selected <= 3:
-            entity_names[1] = (1 ,self.entity_names[1])
-            entity_names[2] = (2 ,self.entity_names[2])
-            entity_names[3] = (3 ,self.entity_names[3])
-            entity_names[4] = (4 ,self.entity_names[4])
-            entity_names[5] = (5 ,self.entity_names[5])
-            entity_names[6] = (6 ,self.entity_names[6])
-            entity_names[7] = (-1, empty_entity)
+        if entity_count <= max_entity_count:
             return entity_names
         
-        if entity_count - selected <= 4:
-            entity_names[1] = (-1, empty_entity)
-            entity_names[2] = (entity_count - 7, self.entity_names[-7])
-            entity_names[3] = (entity_count - 6, self.entity_names[-6])
-            entity_names[4] = (entity_count - 5, self.entity_names[-5])
-            entity_names[5] = (entity_count - 4, self.entity_names[-4])
-            entity_names[6] = (entity_count - 3, self.entity_names[-3])
-            entity_names[7] = (entity_count - 2, self.entity_names[-2])
-            return entity_names
+        if selected_i <= half_max_entity_count:
+            return entity_names[:max_entity_count - 1] + empty_entity
         
-        entity_names[1] = (-1, empty_entity)
-        entity_names[2] = (selected - 2, self.entity_names[selected - 2])
-        entity_names[3] = (selected - 1, self.entity_names[selected - 1])
-        entity_names[4] = (selected, self.entity_names[selected])
-        entity_names[5] = (selected + 1, self.entity_names[selected + 1])
-        entity_names[6] = (selected + 2, self.entity_names[selected + 2])
-        entity_names[7] = (-1, empty_entity)
-        return entity_names
+        if selected_i >= entity_count - half_max_entity_count - 1:
+            return empty_entity + entity_names[entity_count - max_entity_count + 1:]
+
+        return empty_entity + entity_names[selected_i - half_max_entity_count + 1:selected_i + half_max_entity_count] + empty_entity
     
     def get_sorted_entity_names(self):
         entity_names = os.listdir(self.origin_path)
