@@ -48,7 +48,7 @@ def on_press(key):
 
             selector.cancelled = True
             listener.stop()
-            os.execl(sys.executable, "python", __file__, new_path)
+            os.execl(sys.executable, "python", __file__, f'"{new_path}"')
         else:
             new_path = f'{origin_path}/{entity_name}'
             if os.path.isfile(new_path):
@@ -56,7 +56,7 @@ def on_press(key):
 
             selector.cancelled = True
             listener.stop()
-            os.execl(sys.executable, "python", __file__, new_path)
+            os.execl(sys.executable, "python", __file__, f'"{new_path}"')
 
 try:
     listener = keyboard.Listener(on_press=on_press)
