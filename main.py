@@ -1,4 +1,4 @@
-from pynput import keyboard
+from pynput.keyboard import Listener
 from calculator import Calculator
 from database import Database
 from selector import Selector
@@ -19,24 +19,28 @@ def callback():
     del calculator
     calculator = Calculator(origin_path, database)
 
-def on_press(key):
+def on_press(k):
     global origin_path
     global selector
-    if key == keyboard.Key.esc:
-        return False
     
     try:
-        k = key.char
+        key = k.char
     except:
-        k = key.name
+        key = k.name
+
+    if key == "enter":
+        exit()
+
+    if key == "esc":
+        return False
     
-    if k == "up":
+    if key == "up":
         selector.up_select()
 
-    if k == "down":
+    if key == "down":
         selector.down_select()
     
-    if k == "enter":
+    if key == "space":
         entity_name = selector.get_selected()
 
         if entity_name is None:
@@ -59,7 +63,7 @@ def on_press(key):
             os.execl(sys.executable, "python", __file__, f'"{new_path}"')
 
 try:
-    listener = keyboard.Listener(on_press=on_press)
+    listener = Listener(on_press=on_press)
     listener.start()
     listener.join()
 except:
