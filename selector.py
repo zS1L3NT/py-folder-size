@@ -21,6 +21,7 @@ class Selector():
     
     def start(self):
         complete = False
+        terminal_size = (0, 0)
         origin_path = self.origin_path
 
         sleep(1)
@@ -37,19 +38,20 @@ class Selector():
                 self.refresh()
             
             metadata = self.database.get_metadata__dir(origin_path.split("/"))
-            if metadata["completed"] == True:
-                if complete:
+            if metadata["completed"]:
+                if complete and terminal_size == (os.get_terminal_size().lines, os.get_terminal_size().columns):
                     continue
                 complete = True
             
             self.refresh()
+            terminal_size = (os.get_terminal_size().lines, os.get_terminal_size().columns)
         
     def refresh(self):
         os.system("cls")
         table = [['( )', 'Name', 'Type', 'Size', 'Reading']]
         table.append([
             f'({"*" if self.selection == 0 else " "})',
-            '^^ Parent Directory',
+            '^^ Parent Directory ' + (os.get_terminal_size().columns - 65) * ".",
             'Folder',
             '-',
             '-'
