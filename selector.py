@@ -98,13 +98,13 @@ class Selector():
         if entity_count <= max_entity_count:
             return entity_names
         
-        if selected_i <= half_max_entity_count:
+        if selected_i <= half_max_entity_count - 1:
             return entity_names[:max_entity_count - 1] + [(-2, f"...({entity_count - max_entity_count + 1} more)...")]
         
         if selected_i >= entity_count - half_max_entity_count - 1:
-            return [(-2, f"...({entity_count - max_entity_count} more)...")] + entity_names[entity_count - max_entity_count + 1:]
+            return [(-2, f"...({entity_count - max_entity_count + 1} more)...")] + entity_names[entity_count - max_entity_count + 1:]
 
-        return [(-2, f"...({selected_i - half_max_entity_count} more)...")] + entity_names[selected_i - half_max_entity_count + 1:selected_i + half_max_entity_count] + [(-2, f"...({entity_count - selected_i - half_max_entity_count} more)...")]
+        return [(-2, f"...({selected_i - half_max_entity_count + 2} more)...")] + entity_names[selected_i - half_max_entity_count + 2:selected_i + half_max_entity_count] + [(-2, f"...({entity_count - selected_i - half_max_entity_count} more)...")]
     
     def get_sorted_entity_names(self):
         entity_names = os.listdir(self.origin_path)
