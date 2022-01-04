@@ -1,6 +1,7 @@
 from threading import Thread
 from tabulate import tabulate
 from database import Database
+from yachalk import chalk
 from time import sleep
 import os
 
@@ -82,7 +83,9 @@ class Selector():
 
             table.append([ Checkbox, entity_name, Type, Size, Status ])
 
+        print(chalk.bg_red("DO NOT PRESS THE ENTER KEY"))
         print(tabulate(table, headers='firstrow', tablefmt='grid'))
+        print("CWD is " + self.origin_path)
     
     def paginate_entity_names(self) -> list[tuple[int, str]]:
         selected_i = self.selection - 1
@@ -91,7 +94,7 @@ class Selector():
 
         # maximum number of entities that can be shown on the screen
         # make the number odd
-        max_entity_count = max(5, (os.get_terminal_size().lines - 8) // 2)
+        max_entity_count = max(5, (os.get_terminal_size().lines - 10) // 2)
         max_entity_count = (max_entity_count + 1) if max_entity_count // 2 else max_entity_count
         half_max_entity_count = max_entity_count // 2
 
